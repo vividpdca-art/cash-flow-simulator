@@ -81,18 +81,29 @@ const SliderField = ({
   </div>
 );
 
+const DisplayField = ({
+  label,
+  value,
+  unit,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+}) => (
+  <div className="flex flex-col space-y-2">
+    <label className="text-sm font-medium text-slate-700">{label}</label>
+    <div className="relative flex items-center">
+      <div className="w-full px-3 py-2 border border-slate-200 rounded-md bg-slate-50 text-slate-500 pr-12 font-bold flex items-center justify-end h-[42px]">
+        {new Intl.NumberFormat('ja-JP').format(Math.round(value))}
+      </div>
+      <span className="absolute right-3 text-slate-400 text-sm">{unit}</span>
+    </div>
+  </div>
+);
+
 export default function SimulationForm({ inputs, onChange }: Props) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    if (
-      value === '' &&
-      (name === 'currentAnnualRevenue' || name === 'currentAnnualCost')
-    ) {
-      const next = { ...inputs };
-      delete (next as Partial<SimulationInputs>)[name as keyof SimulationInputs];
-      onChange(next);
-      return;
-    }
     if (value === '' && e.target.type === 'number') {
       onChange({
         ...inputs,
@@ -202,23 +213,19 @@ export default function SimulationForm({ inputs, onChange }: Props) {
               直近1年間の決算データ（粗利計算用・任意）
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field
+              <DisplayField
                 label="現在の年間売上"
-                name="currentAnnualRevenue"
-                value={inputs.currentAnnualRevenue ?? inputs.currentRevenue * 12}
+                value={inputs.currentRevenue * 12}
                 unit="円"
-                onChange={handleChange}
               />
-              <Field
+              <DisplayField
                 label="現在の年間仕入額"
-                name="currentAnnualCost"
-                value={inputs.currentAnnualCost ?? inputs.currentCost * 12}
+                value={inputs.currentCost * 12}
                 unit="円"
-                onChange={handleChange}
               />
             </div>
-            <p className="text-[10px] text-slate-600 font-medium">
-              未入力の場合は「月間売上×12／月間仕入×12」を計算に使用します。
+            <p className="text-[10px] text-slate-500 font-medium">
+              自動算出（月間売上×12／月間仕入×12）
             </p>
           </div>
 
