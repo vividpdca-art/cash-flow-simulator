@@ -5,21 +5,29 @@ export interface SimulationInputs {
   annualVisits: number;
   promotionRate: number;
   cashBalance: number;
-  // New deficit components
   currentRevenue: number;
   currentCost: number;
   fixedCosts: number;
   loanPrincipal: number;
-  // monthlyDeficit is now calculated
-  monthlyDeficit?: number; 
+  /** 未入力時は currentRevenue × 12 を使用 */
+  currentAnnualRevenue?: number;
+  /** 未入力時は currentCost × 12 を使用 */
+  currentAnnualCost?: number;
+  monthlyDeficit?: number;
 }
 
 export interface SimulationResults {
-  annualRevenueIncrease: number;
+  priceIncreaseEffect: number;
+  costRate: number;
+  grossProfitRate: number;
+  newPotentialRevenue: number;
+  revenueLossDueToChurn: number;
+  gpLossDueToChurn: number;
+  finalAnnualImprovement: number;
   promotionCost: number;
   annualNetImprovement: number;
   monthlyImprovement: number;
-  currentMonthlyDeficit: number; // Calculated from inputs
+  currentMonthlyDeficit: number;
   currentRunway: number | 'no_short';
   improvedMonthlyDeficit: number;
   improvedRunway: number | 'no_short';
@@ -40,22 +48,50 @@ export function calculateSimulation(inputs: SimulationInputs): SimulationResults
     loanPrincipal,
   } = inputs;
 
-  // Calculate current monthly deficit based on the user request
-  // 月間資金不足額 = 仕入 + 固定費 + 借入元本 - 現在の売上
-  // Note: user said "売上 - 仕入 - 固定費 - 借入元本" but called it "不足額".
-  // If Revenue - Costs is positive, it's Surplus. If negative, the absolute value is Deficit.
-  // We want currentMonthlyDeficit as a positive number for calculation if it is a shortfall.
-  const currentMonthlyDeficit = (currentCost + fixedCosts + loanPrincipal) - currentRevenue;
+  const currentAnnualRevenue =
+    inputs.currentAnnualRevenue ?? currentRevenue * 12;
+  const currentAnnualCostInput =
+    inputs.currentAnnualCost ?? currentCost * 12;
 
-  const annualRevenueIncrease = priceIncrease * customerCount * (1 - churnRate / 100) * annualVisits;
-  const promotionCost = annualRevenueIncrease * (promotionRate / 100);
-  const annualNetImprovement = annualRevenueIncrease - promotionCost;
+  const currentMonthlyDeficit =
+    currentCost + fixedCosts + loanPrincipal - currentRevenue;
+
+  const priceIncreaseEffect = priceIncrease * customerCount * annualVisits;
+
+  const costRate =
+    currentAnnualRevenue > 0
+      ? Math.min(1, currentAnnualCostInput / currentAnnualRevenue)
+      : 0;
+  const grossProfitRate = 1 - costRate;
+
+  const newPotentialRevenue = currentAnnualRevenue + priceIncreaseEffect;
+  const revenueLossDueToChurn = newPotentialRevenue * (churnRate / 100);
+
+  // 離脱による粗利影響：原価率・粗利率は「既存の年間売上」にのみ対応する前提。
+  // 値上げによる増収分には追加仕入を乗せない → その分の離脱売上減に対する影響は100%（=コストなしの増分利益が失われる）。
+  let gpLossDueToChurn = 0;
+  if (newPotentialRevenue > 0 && revenueLossDueToChurn > 0) {
+    const shareExisting = Math.max(0, currentAnnualRevenue) / newPotentialRevenue;
+    const shareIncrease = Math.max(0, priceIncreaseEffect) / newPotentialRevenue;
+    const churnLossExisting = revenueLossDueToChurn * shareExisting;
+    const churnLossIncrease = revenueLossDueToChurn * shareIncrease;
+    gpLossDueToChurn =
+      churnLossExisting * grossProfitRate + churnLossIncrease * 1;
+  }
+
+  const finalAnnualImprovement = priceIncreaseEffect - gpLossDueToChurn;
+
+  const promotionCost =
+    Math.max(0, finalAnnualImprovement) * (promotionRate / 100);
+  const annualNetImprovement = finalAnnualImprovement - promotionCost;
   const monthlyImprovement = annualNetImprovement / 12;
 
-  const currentRunway = currentMonthlyDeficit > 0 ? cashBalance / currentMonthlyDeficit : 'no_short';
-  
+  const currentRunway =
+    currentMonthlyDeficit > 0 ? cashBalance / currentMonthlyDeficit : 'no_short';
+
   const improvedMonthlyDeficit = currentMonthlyDeficit - monthlyImprovement;
-  const improvedRunway = improvedMonthlyDeficit > 0 ? cashBalance / improvedMonthlyDeficit : 'no_short';
+  const improvedRunway =
+    improvedMonthlyDeficit > 0 ? cashBalance / improvedMonthlyDeficit : 'no_short';
 
   let extensionMonths: number | 'avoided';
   if (improvedRunway === 'no_short') {
@@ -67,7 +103,13 @@ export function calculateSimulation(inputs: SimulationInputs): SimulationResults
   }
 
   return {
-    annualRevenueIncrease,
+    priceIncreaseEffect,
+    costRate,
+    grossProfitRate,
+    newPotentialRevenue,
+    revenueLossDueToChurn,
+    gpLossDueToChurn,
+    finalAnnualImprovement,
     promotionCost,
     annualNetImprovement,
     monthlyImprovement,
@@ -79,16 +121,20 @@ export function calculateSimulation(inputs: SimulationInputs): SimulationResults
   };
 }
 
-export function generateChartData(inputs: SimulationInputs, results: SimulationResults) {
-  const data = [];
+export function generateChartData(
+  inputs: SimulationInputs,
+  results: SimulationResults
+) {
+  const data: Array<{ month: string; 現状: number; 値上げ後: number }> = [];
   const { cashBalance } = inputs;
   const { currentMonthlyDeficit, improvedMonthlyDeficit } = results;
 
   for (let month = 0; month <= 12; month++) {
-    const currentBalance = Math.max(0, cashBalance - (month * currentMonthlyDeficit));
-    const improvedBalance = improvedMonthlyDeficit > 0 
-      ? Math.max(0, cashBalance - (month * improvedMonthlyDeficit))
-      : cashBalance;
+    const currentBalance = Math.max(0, cashBalance - month * currentMonthlyDeficit);
+    const improvedBalance =
+      improvedMonthlyDeficit > 0
+        ? Math.max(0, cashBalance - month * improvedMonthlyDeficit)
+        : cashBalance;
 
     data.push({
       month: `${month}ヶ月`,

@@ -58,7 +58,7 @@ export default function Home() {
           results={results} 
         />
         
-        <div className="mt-12 text-center text-slate-400 text-sm italic">
+        <div className="mt-12 text-center text-slate-600 text-sm font-bold italic pb-10">
           ※本シミュレーターはあくまで概算であり、実際の経営判断にあたっては専門家にご相談ください。
         </div>
       </div>

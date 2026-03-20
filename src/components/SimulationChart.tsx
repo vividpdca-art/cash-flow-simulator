@@ -20,16 +20,16 @@ export default function SimulationChart({ data }: Props) {
     new Intl.NumberFormat('ja-JP', { notation: 'compact' }).format(val);
 
   return (
-    <div className="bg-white p-10 rounded-3xl border border-slate-200 shadow-sm mb-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
-        <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
+    <div className="bg-white p-4 md:p-10 rounded-3xl border border-slate-200 shadow-sm mb-12">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-10 gap-4">
+        <h2 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-3">
           <span className="w-1.5 h-8 bg-slate-800 rounded-full inline-block"></span>
-          資金残高の推移予測（12ヶ月）
+          資金残高の推移予測
         </h2>
-        <div className="flex items-center gap-6 px-4 py-2 bg-slate-50 rounded-2xl border border-slate-100">
+        <div className="flex items-center gap-4 md:gap-6 px-3 py-2 bg-slate-50 rounded-2xl border border-slate-100 w-full md:w-auto justify-between md:justify-start">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-slate-400 rounded-full"></div>
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">現状維持</span>
+            <div className="w-3 h-3 bg-slate-500 rounded-full"></div>
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-widest">現状維持</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
@@ -38,35 +38,35 @@ export default function SimulationChart({ data }: Props) {
         </div>
       </div>
       
-      <div className="h-[450px] w-full">
+      <div className="h-[300px] md:h-[450px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
             margin={{
               top: 5,
-              right: 30,
-              left: 20,
+              right: 10,
+              left: 0,
               bottom: 5,
             }}
           >
-            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#e2e8f0" />
             <XAxis 
               dataKey="month" 
-              stroke="#94a3b8"
-              fontSize={11}
+              stroke="#64748b"
+              fontSize={10}
               fontWeight={700}
               tickLine={false}
               axisLine={false}
-              dy={15}
+              dy={10}
             />
             <YAxis 
-              stroke="#94a3b8"
-              fontSize={11}
+              stroke="#64748b"
+              fontSize={10}
               fontWeight={700}
               tickLine={false}
               axisLine={false}
               tickFormatter={formatCurrency}
-              dx={-10}
+              width={45}
             />
             <Tooltip 
               formatter={(value: number | string | readonly (number | string)[] | undefined) => {
