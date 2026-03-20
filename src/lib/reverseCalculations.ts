@@ -14,6 +14,8 @@ export interface ReverseCalculationInputs {
   loanPrincipal: number;
   /** 平均単価（1単位あたり） */
   avgUnitPrice: number;
+  /** ハイブリッド比率（0-100, 100=全部数量増, 0=全部値上げ） */
+  hybridRatio: number;
 }
 
 export interface ReverseCalculationResults {
@@ -27,14 +29,20 @@ export interface ReverseCalculationResults {
   breakEvenRevenue: number;
   /** 現状数量 = 売上 ÷ 平均単価 */
   quantity: number;
+  /** ハイブリッド比率の数値（表示用） */
+  hybridRatio: number;
   /** A: 単価据え置きで埋める必要数量増（不足粗利を全額数量で賄う場合） */
   optionA_quantityIncrease: number;
   /** B: 数量据え置きで埋める必要値上げ額（1単位あたり、不足粗利を全額値上げで賄う場合） */
   optionB_priceIncrease: number;
-  /** C: 不足粗利を半分ずつ数量増・値上げで賄う場合 */
+  /** B: 必要値上げ率（不足粗利 / 売上） */
+  optionB_priceIncreaseRate: number;
+  /** C: 不足粗利を指定比率で数量増・値上げで賄う場合 */
   optionC_hybrid: {
     quantityIncrease: number;
     priceIncreasePerUnit: number;
+    quantityPercent: number;
+    pricePercent: number;
   };
 }
 
@@ -89,11 +97,21 @@ export function calculateReverse(
 
   const optionB_priceIncrease =
     grossProfitShortfall > 0 && quantity > 0 ? grossProfitShortfall / quantity : 0;
+  const optionB_priceIncreaseRate =
+    grossProfitShortfall > 0 && monthlyRevenue > 0 ? grossProfitShortfall / monthlyRevenue : 0;
 
-  const half = grossProfitShortfall / 2;
+  const hybridRatio = raw.hybridRatio;
+  const quantityRatio = hybridRatio / 100;
+  const priceRatio = (100 - hybridRatio) / 100;
+
+  const shortfallForQuantity = grossProfitShortfall * quantityRatio;
+  const shortfallForPrice = grossProfitShortfall * priceRatio;
+
   const optionC_hybrid = {
-    quantityIncrease: half > 0 && denomQty > 0 ? half / denomQty : 0,
-    priceIncreasePerUnit: half > 0 && quantity > 0 ? half / quantity : 0,
+    quantityIncrease: shortfallForQuantity > 0 && denomQty > 0 ? shortfallForQuantity / denomQty : 0,
+    priceIncreasePerUnit: shortfallForPrice > 0 && quantity > 0 ? shortfallForPrice / quantity : 0,
+    quantityPercent: hybridRatio,
+    pricePercent: 100 - hybridRatio,
   };
 
   return {
@@ -104,8 +122,10 @@ export function calculateReverse(
       grossProfitShortfall,
       breakEvenRevenue,
       quantity,
+      hybridRatio,
       optionA_quantityIncrease,
       optionB_priceIncrease,
+      optionB_priceIncreaseRate,
       optionC_hybrid,
     },
   };
