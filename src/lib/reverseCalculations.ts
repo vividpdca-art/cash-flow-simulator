@@ -87,14 +87,13 @@ export function calculateReverse(
   const optionA_quantityIncrease =
     grossProfitShortfall > 0 && denomQty > 0 ? grossProfitShortfall / denomQty : 0;
 
-  const denomPrice = m * quantity;
   const optionB_priceIncrease =
-    grossProfitShortfall > 0 && denomPrice > 0 ? grossProfitShortfall / denomPrice : 0;
+    grossProfitShortfall > 0 && quantity > 0 ? grossProfitShortfall / quantity : 0;
 
   const half = grossProfitShortfall / 2;
   const optionC_hybrid = {
     quantityIncrease: half > 0 && denomQty > 0 ? half / denomQty : 0,
-    priceIncreasePerUnit: half > 0 && denomPrice > 0 ? half / denomPrice : 0,
+    priceIncreasePerUnit: half > 0 && quantity > 0 ? half / quantity : 0,
   };
 
   return {
